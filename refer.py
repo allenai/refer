@@ -30,13 +30,13 @@ import json
 import cPickle as pickle
 import time
 import itertools
-import skimage.io as io
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Polygon, Rectangle
+#import skimage.io as io
+#import matplotlib.pyplot as plt
+#from matplotlib.collections import PatchCollection
+#from matplotlib.patches import Polygon, Rectangle
 from pprint import pprint
 import numpy as np
-from external import mask
+#from external import mask
 # import cv2
 # from skimage.measure import label, regionprops
 
@@ -230,128 +230,128 @@ class REFER:
 		ann = self.refToAnn[ref_id]
 		return ann['bbox']  # [x, y, w, h]
 
-	def showRef(self, ref, seg_box='seg'):
-		ax = plt.gca()
-		# show image
-		image = self.Imgs[ref['image_id']]
-		I = io.imread(osp.join(self.IMAGE_DIR, image['file_name']))
-		ax.imshow(I)
-		# show refer expression
-		for sid, sent in enumerate(ref['sentences']):
-			print '%s. %s' % (sid+1, sent['sent'])
-		# show segmentations
-		if seg_box == 'seg':
-			ann_id = ref['ann_id']
-			ann = self.Anns[ann_id]
-			polygons = []
-			color = []
-			c = 'none'
-			if type(ann['segmentation'][0]) == list:
-				# polygon used for refcoco*
-				for seg in ann['segmentation']:
-					poly = np.array(seg).reshape((len(seg)/2, 2))
-					polygons.append(Polygon(poly, True, alpha=0.4))
-					color.append(c)
-				p = PatchCollection(polygons, facecolors=color, edgecolors=(1,1,0,0), linewidths=3, alpha=1)
-				ax.add_collection(p)  # thick yellow polygon
-				p = PatchCollection(polygons, facecolors=color, edgecolors=(1,0,0,0), linewidths=1, alpha=1)
-				ax.add_collection(p)  # thin red polygon
-			else:
-				# mask used for refclef
-				rle = ann['segmentation']
-				m = mask.decode(rle)
-				img = np.ones( (m.shape[0], m.shape[1], 3) )
-				color_mask = np.array([2.0,166.0,101.0])/255
-				for i in range(3):
-					img[:,:,i] = color_mask[i]
-				ax.imshow(np.dstack( (img, m*0.5) ))
-		# show bounding-box
-		elif seg_box == 'box':
-			ann_id = ref['ann_id']
-			ann = self.Anns[ann_id]
-			bbox = 	self.getRefBox(ref['ref_id'])
-			box_plot = Rectangle((bbox[0], bbox[1]), bbox[2], bbox[3], fill=False, edgecolor='green', linewidth=3)
-			ax.add_patch(box_plot)
+	# def showRef(self, ref, seg_box='seg'):
+	# 	ax = plt.gca()
+	# 	# show image
+	# 	image = self.Imgs[ref['image_id']]
+	# 	I = io.imread(osp.join(self.IMAGE_DIR, image['file_name']))
+	# 	ax.imshow(I)
+	# 	# show refer expression
+	# 	for sid, sent in enumerate(ref['sentences']):
+	# 		print '%s. %s' % (sid+1, sent['sent'])
+	# 	# show segmentations
+	# 	if seg_box == 'seg':
+	# 		ann_id = ref['ann_id']
+	# 		ann = self.Anns[ann_id]
+	# 		polygons = []
+	# 		color = []
+	# 		c = 'none'
+	# 		if type(ann['segmentation'][0]) == list:
+	# 			# polygon used for refcoco*
+	# 			for seg in ann['segmentation']:
+	# 				poly = np.array(seg).reshape((len(seg)/2, 2))
+	# 				polygons.append(Polygon(poly, True, alpha=0.4))
+	# 				color.append(c)
+	# 			p = PatchCollection(polygons, facecolors=color, edgecolors=(1,1,0,0), linewidths=3, alpha=1)
+	# 			ax.add_collection(p)  # thick yellow polygon
+	# 			p = PatchCollection(polygons, facecolors=color, edgecolors=(1,0,0,0), linewidths=1, alpha=1)
+	# 			ax.add_collection(p)  # thin red polygon
+	# 		else:
+	# 			# mask used for refclef
+	# 			rle = ann['segmentation']
+	# 			m = mask.decode(rle)
+	# 			img = np.ones( (m.shape[0], m.shape[1], 3) )
+	# 			color_mask = np.array([2.0,166.0,101.0])/255
+	# 			for i in range(3):
+	# 				img[:,:,i] = color_mask[i]
+	# 			ax.imshow(np.dstack( (img, m*0.5) ))
+	# 	# show bounding-box
+	# 	elif seg_box == 'box':
+	# 		ann_id = ref['ann_id']
+	# 		ann = self.Anns[ann_id]
+	# 		bbox = 	self.getRefBox(ref['ref_id'])
+	# 		box_plot = Rectangle((bbox[0], bbox[1]), bbox[2], bbox[3], fill=False, edgecolor='green', linewidth=3)
+	# 		ax.add_patch(box_plot)
 
-	def getMask(self, ref):
-		# return mask, area and mask-center
-		ann = self.refToAnn[ref['ref_id']]
-		image = self.Imgs[ref['image_id']]
-		if type(ann['segmentation'][0]) == list: # polygon
-			rle = mask.frPyObjects(ann['segmentation'], image['height'], image['width'])
-		else:
-			rle = ann['segmentation']
-		m = mask.decode(rle)
-		m = np.sum(m, axis=2)  # sometimes there are multiple binary map (corresponding to multiple segs)
-		m = m.astype(np.uint8) # convert to np.uint8
-		# compute area
-		area = sum(mask.area(rle))  # should be close to ann['area']
-		return {'mask': m, 'area': area}
-		# # position
-		# position_x = np.mean(np.where(m==1)[1]) # [1] means columns (matlab style) -> x (c style)
-		# position_y = np.mean(np.where(m==1)[0]) # [0] means rows (matlab style)    -> y (c style)
-		# # mass position (if there were multiple regions, we use the largest one.)
-		# label_m = label(m, connectivity=m.ndim)
-		# regions = regionprops(label_m)
-		# if len(regions) > 0:
-		# 	largest_id = np.argmax(np.array([props.filled_area for props in regions]))
-		# 	largest_props = regions[largest_id]
-		# 	mass_y, mass_x = largest_props.centroid
-		# else:
-		# 	mass_x, mass_y = position_x, position_y
-		# # if centroid is not in mask, we find the closest point to it from mask
-		# if m[mass_y, mass_x] != 1:
-		# 	print 'Finding closes mask point ...'
-		# 	kernel = np.ones((10, 10),np.uint8)
-		# 	me = cv2.erode(m, kernel, iterations = 1)
-		# 	points = zip(np.where(me == 1)[0].tolist(), np.where(me == 1)[1].tolist())  # row, col style
-		# 	points = np.array(points)
-		# 	dist   = np.sum((points - (mass_y, mass_x))**2, axis=1)
-		# 	id     = np.argsort(dist)[0]
-		# 	mass_y, mass_x = points[id]
-		# 	# return
-		# return {'mask': m, 'area': area, 'position_x': position_x, 'position_y': position_y, 'mass_x': mass_x, 'mass_y': mass_y}
-		# # show image and mask
-		# I = io.imread(osp.join(self.IMAGE_DIR, image['file_name']))
-		# plt.figure()
-		# plt.imshow(I)
-		# ax = plt.gca()
-		# img = np.ones( (m.shape[0], m.shape[1], 3) )
-		# color_mask = np.array([2.0,166.0,101.0])/255
-		# for i in range(3):
-		#     img[:,:,i] = color_mask[i]
-		# ax.imshow(np.dstack( (img, m*0.5) ))
-		# plt.show()
+	# def getMask(self, ref):
+	# 	# return mask, area and mask-center
+	# 	ann = self.refToAnn[ref['ref_id']]
+	# 	image = self.Imgs[ref['image_id']]
+	# 	if type(ann['segmentation'][0]) == list: # polygon
+	# 		rle = mask.frPyObjects(ann['segmentation'], image['height'], image['width'])
+	# 	else:
+	# 		rle = ann['segmentation']
+	# 	m = mask.decode(rle)
+	# 	m = np.sum(m, axis=2)  # sometimes there are multiple binary map (corresponding to multiple segs)
+	# 	m = m.astype(np.uint8) # convert to np.uint8
+	# 	# compute area
+	# 	area = sum(mask.area(rle))  # should be close to ann['area']
+	# 	return {'mask': m, 'area': area}
+	# 	# # position
+	# 	# position_x = np.mean(np.where(m==1)[1]) # [1] means columns (matlab style) -> x (c style)
+	# 	# position_y = np.mean(np.where(m==1)[0]) # [0] means rows (matlab style)    -> y (c style)
+	# 	# # mass position (if there were multiple regions, we use the largest one.)
+	# 	# label_m = label(m, connectivity=m.ndim)
+	# 	# regions = regionprops(label_m)
+	# 	# if len(regions) > 0:
+	# 	# 	largest_id = np.argmax(np.array([props.filled_area for props in regions]))
+	# 	# 	largest_props = regions[largest_id]
+	# 	# 	mass_y, mass_x = largest_props.centroid
+	# 	# else:
+	# 	# 	mass_x, mass_y = position_x, position_y
+	# 	# # if centroid is not in mask, we find the closest point to it from mask
+	# 	# if m[mass_y, mass_x] != 1:
+	# 	# 	print 'Finding closes mask point ...'
+	# 	# 	kernel = np.ones((10, 10),np.uint8)
+	# 	# 	me = cv2.erode(m, kernel, iterations = 1)
+	# 	# 	points = zip(np.where(me == 1)[0].tolist(), np.where(me == 1)[1].tolist())  # row, col style
+	# 	# 	points = np.array(points)
+	# 	# 	dist   = np.sum((points - (mass_y, mass_x))**2, axis=1)
+	# 	# 	id     = np.argsort(dist)[0]
+	# 	# 	mass_y, mass_x = points[id]
+	# 	# 	# return
+	# 	# return {'mask': m, 'area': area, 'position_x': position_x, 'position_y': position_y, 'mass_x': mass_x, 'mass_y': mass_y}
+	# 	# # show image and mask
+	# 	# I = io.imread(osp.join(self.IMAGE_DIR, image['file_name']))
+	# 	# plt.figure()
+	# 	# plt.imshow(I)
+	# 	# ax = plt.gca()
+	# 	# img = np.ones( (m.shape[0], m.shape[1], 3) )
+	# 	# color_mask = np.array([2.0,166.0,101.0])/255
+	# 	# for i in range(3):
+	# 	#     img[:,:,i] = color_mask[i]
+	# 	# ax.imshow(np.dstack( (img, m*0.5) ))
+	# 	# plt.show()
 
-	def showMask(self, ref):
-		M = self.getMask(ref)
-		msk = M['mask']
-		ax = plt.gca()
-		ax.imshow(msk)
+	# def showMask(self, ref):
+	# 	M = self.getMask(ref)
+	# 	msk = M['mask']
+	# 	ax = plt.gca()
+	# 	ax.imshow(msk)
 
 
-if __name__ == '__main__':
-	refer = REFER(dataset='refcocog', splitBy='google')
-	ref_ids = refer.getRefIds()
-	print(len(ref_ids))
+# if __name__ == '__main__':
+# 	refer = REFER(dataset='refcocog', splitBy='google')
+# 	ref_ids = refer.getRefIds()
+# 	print(len(ref_ids))
 
-	print len(refer.Imgs)
-	print len(refer.imgToRefs)
+# 	print len(refer.Imgs)
+# 	print len(refer.imgToRefs)
 
-	ref_ids = refer.getRefIds(split='train')
-	print 'There are %s training referred objects.' % len(ref_ids)
+# 	ref_ids = refer.getRefIds(split='train')
+# 	print 'There are %s training referred objects.' % len(ref_ids)
 
-	for ref_id in ref_ids:
-		ref = refer.loadRefs(ref_id)[0]
-		if len(ref['sentences']) < 2:
-			continue
+# 	for ref_id in ref_ids:
+# 		ref = refer.loadRefs(ref_id)[0]
+# 		if len(ref['sentences']) < 2:
+# 			continue
 
-		pprint(ref)
-		print 'The label is %s.' % refer.Cats[ref['category_id']]
-		plt.figure()
-		refer.showRef(ref, seg_box='box')
-		plt.show()
+# 		pprint(ref)
+# 		print 'The label is %s.' % refer.Cats[ref['category_id']]
+# 		plt.figure()
+# 		refer.showRef(ref, seg_box='box')
+# 		plt.show()
 
-		# plt.figure()
-		# refer.showMask(ref)
-		# plt.show()
+# 		# plt.figure()
+# 		# refer.showMask(ref)
+# 		# plt.show()
