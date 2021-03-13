@@ -58,6 +58,6 @@ def subsample_train(per,seed=0):
 if __name__=='__main__':
     for subset in ['train','val','test']:
         get_split(subset)
-        
-    for per in [1,2,5,10,25,50,75,100]:
+    
+    for per in [0.1,1,2,5,10,25,50,75,100]:
         subsample_train(per)
